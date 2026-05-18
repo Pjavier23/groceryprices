@@ -18,6 +18,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span className="text-cyan-400">Prices</span>
             </a>
             <div className="flex items-center gap-4 text-sm">
+              <a href="/trends" className="text-slate-400 hover:text-cyan-400 transition-colors flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                Trends
+              </a>
               <a href="/compare" className="text-slate-400 hover:text-white transition-colors">Compare</a>
               <a href="/upload" className="text-slate-400 hover:text-white transition-colors">Scan</a>
               <a href="/dashboard" className="text-slate-400 hover:text-white transition-colors">Dashboard</a>

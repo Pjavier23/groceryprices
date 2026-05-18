@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { getDemoPrices, getBestPrices, getStores, calculateSavings } from "@/lib/prices"
+import { getDemoPrices, getBestPrices, getStores } from "@/lib/prices"
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({
@@ -14,7 +14,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const prices = getDemoPrices()
     const stores = getStores()
-    const bestPrices = getBestPrices()
+    const bestPrices = getBestPrices(prices)
     const products = Object.keys(bestPrices)
     
     // Calculate potential savings

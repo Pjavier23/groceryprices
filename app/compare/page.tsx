@@ -30,7 +30,7 @@ function CompareContent() {
 
   const handleSelectProduct = (name: string) => {
     setSelectedProduct(name)
-    const prices = getPricesForProduct(name)
+    const prices = getPricesForProduct(name, allPrices)
     setResults(prices)
   }
 

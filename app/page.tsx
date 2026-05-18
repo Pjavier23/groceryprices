@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { getStores, getBestPrices, getProducts, getDemoPrices } from "@/lib/prices"
+import { getStores, getBestPrices, getProducts, getDemoPrices, BLS_PRODUCT_MAP, PRODUCT_CATALOG } from "@/lib/prices"
+import { fetchBLSPrices } from "@/lib/bls"
 import type { PriceEntry } from "@/lib/prices"
+import type { BLSSeries } from "@/lib/bls"
 
 type SearchResult = {
   product: string
@@ -17,8 +19,14 @@ export default function Home() {
   const [results, setResults] = useState<SearchResult[]>([])
   const [trending, setTrending] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(true)
+  const [blsData, setBlsData] = useState<BLSSeries[]>([])
 
   useEffect(() => {
+    // Load BLS live data
+    fetchBLSPrices().then(data => {
+      setBlsData(data.filter(s => s.latest > 0))
+    }).catch(() => {})
+
     // Load trending products
     const prices = getDemoPrices()
     const products = [...new Set(prices.map(p => p.product_name))]
@@ -187,6 +195,40 @@ export default function Home() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* BLS Live Price Trends */}
+      {blsData.length > 0 && (
+        <div className="max-w-5xl mx-auto px-4 pb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <h2 className="text-lg font-semibold text-slate-300">Live National Averages</h2>
+            <span className="px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-400 text-[10px] border border-green-500/20 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+              BLS
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {blsData.slice(0, 12).map(s => {
+              const info = PRODUCT_CATALOG.find(p => p.name === Object.entries(BLS_PRODUCT_MAP).find(([, id]) => id === s.id)?.[0])
+              return (
+                <Link key={s.id} href={`/trends`} className="gradient-card p-3 hover:border-cyan-500/30 transition-all">
+                  <div className="text-sm text-slate-400">{info?.emoji || '📦'} {s.name}</div>
+                  <div className="text-lg font-bold text-white mt-1">${s.latest.toFixed(2)}</div>
+                  <div className="flex items-center gap-1 mt-1">
+                    <span className={`text-xs ${(s.change3m ?? 0) > 0 ? 'text-red-400' : (s.change3m ?? 0) < 0 ? 'text-green-400' : 'text-slate-500'}`}>
+                      {(s.change3m ?? 0) > 0 ? '↑' : (s.change3m ?? 0) < 0 ? '↓' : '→'} ${Math.abs(s.change3m ?? 0).toFixed(2)} 3m
+                    </span>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+          <div className="text-center mt-3">
+            <Link href="/trends" className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors">
+              View all trends & insights →
+            </Link>
+          </div>
         </div>
       )}
 
