@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react"
 import { extractReceiptText, extractPDFText } from "@/lib/ocr"
-import type { ReceiptItem, ReceiptParseResult } from "@/lib/ocr"
+import type { ReceiptParseResult } from "@/lib/ocr"
 
 export default function UploadPage() {
   const [dragging, setDragging] = useState(false)

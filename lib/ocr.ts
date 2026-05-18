@@ -1,12 +1,6 @@
 // lib/ocr.ts
 // Receipt OCR pipeline using Tesseract.js
 import Tesseract from 'tesseract.js'
-import * as pdfjs from 'pdfjs-dist'
-
-// Configure pdfjs worker
-try {
-  pdfjs.GlobalWorkerOptions.workerSrc = ''
-} catch {}
 
 export type ReceiptItem = {
   name: string
@@ -38,26 +32,25 @@ const STORE_PATTERNS: [RegExp, string][] = [
   [/food\s*lion/i, 'Food Lion'],
   [/wegmans/i, 'Wegmans'],
   [/publix/i, 'Publix'],
-  [/hebrew\s*national/i, "Hebrew National"],
   [/stop\s*[&]?\s*shop/i, 'Stop & Shop'],
 ]
 
-// Price pattern: $X.XX or X.XX
 const PRICE_RE = /\$?(\d+\.\d{2})\b/
 
 export async function extractReceiptText(imageBuffer: Buffer): Promise<ReceiptParseResult> {
   const result = await Tesseract.recognize(imageBuffer, 'eng', {
-    logger: (m: any) => { if (m.status === 'recognizing text') {} },
+    logger: () => {},
   })
   
   const text = result.data.text
-  const lines = text.split('\n').filter(l => l.trim())
-  
+  const lines = text.split('\n').filter((l: string) => l.trim())
   return parseReceiptText(text, lines)
 }
 
 export async function extractPDFText(pdfBuffer: Buffer): Promise<ReceiptParseResult> {
-  const data = new Uint8Array(pdfBuffer.buffer || pdfBuffer)
+  // Lazy load pdfjs to avoid DOMMatrix errors at build time
+  const pdfjs = await import('pdfjs-dist')
+  const data = new Uint8Array(pdfBuffer)
   const doc = await pdfjs.getDocument({ data }).promise
   let text = ''
   
@@ -72,7 +65,6 @@ export async function extractPDFText(pdfBuffer: Buffer): Promise<ReceiptParseRes
 }
 
 function parseReceiptText(text: string, lines: string[]): ReceiptParseResult {
-  // Detect store
   let store: string | undefined
   for (const [pattern, name] of STORE_PATTERNS) {
     if (pattern.test(text)) {
@@ -81,11 +73,9 @@ function parseReceiptText(text: string, lines: string[]): ReceiptParseResult {
     }
   }
   
-  // Detect date
   const dateMatch = text.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/)
   const date = dateMatch ? `${dateMatch[1]}/${dateMatch[2]}/${dateMatch[3]}` : undefined
   
-  // Extract items (lines containing a price)
   const items: ReceiptItem[] = []
   let total: number | undefined
   
@@ -98,7 +88,6 @@ function parseReceiptText(text: string, lines: string[]): ReceiptParseResult {
     
     if (!name || price === 0) continue
     
-    // Check if it's the total
     if (/total|tend|change|cash|visa|mc |debit|credit|tax|balance/i.test(name) && price > 0) {
       if (/total|tend/i.test(name)) total = price
       continue
@@ -108,22 +97,4 @@ function parseReceiptText(text: string, lines: string[]): ReceiptParseResult {
   }
   
   return { store, date, total, items, raw_text: text }
-}
-
-// Lookup product details via Open Food Facts
-export async function lookupBarcode(barcode: string) {
-  try {
-    const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}`)
-    const data = await res.json()
-    if (data.status === 1) {
-      return {
-        name: data.product.product_name,
-        brand: data.product.brands,
-        category: data.product.categories_tags?.[0]?.replace('en:', '') || undefined,
-        image: data.product.image_url,
-        quantity: data.product.quantity,
-      }
-    }
-  } catch {}
-  return null
 }
